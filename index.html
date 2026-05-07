@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico de Performance · Dinalight · Abril 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --red:#E8003D;
+  --bg:#F7F5F2;
+  --white:#FFFFFF;
+  --ink:#0D0D0D;
+  --ink2:#444;
+  --ink3:#999;
+  --border:#E5E2DC;
+  --green:#16A34A;
+  --amber:#D97706;
+  --card:#FFFFFF;
+  --radius:10px;
+}
+html{background:var(--bg)}
+body{
+  font-family:'Outfit',sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  max-width:940px;
+  margin:0 auto;
+  padding:40px 24px 64px;
+}
+
+/* ── HEADER ── */
+.header{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  padding-bottom:32px;border-bottom:2px solid var(--ink);margin-bottom:36px;
+}
+.header-left{}
+.header-tag{
+  font-family:'Space Mono',monospace;
+  font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:10px;
+}
+.header-title{font-size:28px;font-weight:800;line-height:1.1;color:var(--ink)}
+.header-title span{color:var(--red)}
+.header-right{text-align:right}
+.header-date{font-family:'Space Mono',monospace;font-size:11px;color:var(--ink3);margin-bottom:8px}
+.dina-logo img{height:32px;filter:brightness(0)}
+
+/* ── SECTION LABEL ── */
+.sec-label{
+  font-family:'Space Mono',monospace;font-size:10px;
+  letter-spacing:.15em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:12px;
+  display:flex;align-items:center;gap:10px;
+}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── KPI ROW ── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.kpi{
+  background:var(--card);border-radius:var(--radius);
+  padding:18px 16px;border:1px solid var(--border);
+  position:relative;overflow:hidden;
+}
+.kpi::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--border);
+}
+.kpi.accent::before{background:var(--red)}
+.kpi.good::before{background:var(--green)}
+.kpi.warn::before{background:var(--amber)}
+.kpi.bad::before{background:#EF4444}
+.kpi-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.kpi-value{font-size:24px;font-weight:800;color:var(--ink);line-height:1;margin-bottom:4px}
+.kpi-sub{font-size:11px;color:var(--ink3)}
+.kpi-delta{font-size:11px;font-weight:600}
+.kpi-delta.up{color:var(--green)}
+.kpi-delta.down{color:#EF4444}
+
+/* ── TWO COL ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:28px}
+
+/* ── CHART CARD ── */
+.chart-card{
+  background:var(--card);border-radius:var(--radius);
+  border:1px solid var(--border);padding:20px;
+}
+.chart-card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);margin-bottom:4px}
+.chart-card-sub{font-size:11px;color:var(--ink3);margin-bottom:16px}
+.chart-wrap{position:relative}
+
+/* ── CAMPAIGN TABLE ── */
+.camp-table{
+  background:var(--card);border-radius:var(--radius);
+  border:1px solid var(--border);overflow:hidden;margin-bottom:28px;
+}
+.camp-table-head{
+  display:grid;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--ink3);padding:10px 16px;background:var(--bg);
+  border-bottom:1px solid var(--border);
+}
+.camp-row{
+  display:grid;align-items:center;
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  transition:background .15s;
+}
+.camp-row:last-child{border-bottom:none}
+.camp-row:hover{background:#FAFAF8}
+.camp-name{font-size:13px;font-weight:600;color:var(--ink)}
+.camp-name small{display:block;font-size:11px;font-weight:400;color:var(--ink3);margin-top:2px}
+.camp-val{font-size:13px;font-weight:600;color:var(--ink)}
+.camp-val small{display:block;font-size:10px;font-weight:400;color:var(--ink3)}
+/* Pill de estado */
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10px;font-weight:700}
+.pill-green{background:#DCFCE7;color:#15803D}
+.pill-red{background:#FEE2E2;color:#DC2626}
+.pill-amber{background:#FEF3C7;color:#92400E}
+.pill-gray{background:#F3F4F6;color:#6B7280}
+
+/* ── ADS MINI BARS ── */
+.ads-bar-wrap{display:flex;align-items:center;gap:8px}
+.ads-bar{height:8px;border-radius:4px;flex:1;background:var(--border);overflow:hidden;position:relative}
+.ads-bar-fill{height:100%;border-radius:4px;background:var(--red);transition:width .6s ease}
+.ads-count{font-family:'Space Mono',monospace;font-size:10px;color:var(--ink3);white-space:nowrap}
+
+/* ── INSIGHT CARDS ── */
+.insights-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px}
+.insight-card{
+  background:var(--card);border-radius:var(--radius);
+  border:1px solid var(--border);padding:16px;
+  border-left:3px solid var(--border);
+}
+.insight-card.green{border-left-color:var(--green)}
+.insight-card.amber{border-left-color:var(--amber)}
+.insight-card.red{border-left-color:#EF4444}
+.insight-icon{font-size:16px;margin-bottom:8px}
+.insight-title{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.insight-body{font-size:11px;color:var(--ink2);line-height:1.5}
+
+/* ── LEGEND ── */
+.legend{display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink3)}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+/* ── FOOTER ── */
+.footer{
+  margin-top:48px;padding-top:20px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.footer p{font-family:'Space Mono',monospace;font-size:10px;color:var(--ink3)}
+
+/* ── ANIMACIONES ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.kpi{animation:fadeUp .4s ease both}
+.kpi:nth-child(1){animation-delay:.05s}
+.kpi:nth-child(2){animation-delay:.1s}
+.kpi:nth-child(3){animation-delay:.15s}
+.kpi:nth-child(4){animation-delay:.2s}
+.chart-card,.camp-table,.insight-card{animation:fadeUp .5s ease both;animation-delay:.2s}
+
+/* ── NÚMERO GRANDE DESTACADO ── */
+.big-number{
+  font-family:'Space Mono',monospace;
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:24px;
+  display:flex;gap:32px;
+}
+.big-number-item span{display:block;font-family:'Outfit',sans-serif;font-size:32px;font-weight:800;color:var(--ink);line-height:1.1;margin-top:4px}
+.big-number-item b{color:var(--red)}
+
+@media(max-width:680px){
+  .kpi-row{grid-template-columns:1fr 1fr}
+  .two-col,.three-col,.insights-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-tag">Diagnóstico de Performance · Paid Media</div>
+    <div class="header-title">Estado de campañas<br><span>Abril 2026</span></div>
+  </div>
+  <div class="header-right">
+    <div class="header-date">Generado · Mayo 2026</div>
+    <div class="dina-logo">
+      <img src="data:image/png;base64,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" alt="Dinalight">
+    </div>
+  </div>
+</div>
+
+<!-- ── OVERVIEW NUMBERS ── -->
+<div class="big-number">
+  <div class="big-number-item">Inversión total<span>ARS <b>1.824.289</b></span></div>
+  <div class="big-number-item">Contactos generados<span><b>~1.800</b></span></div>
+  <div class="big-number-item">Campañas activas<span><b>6</b></span></div>
+  <div class="big-number-item">Período<span>Abril 2026</span></div>
+</div>
+
+<!-- ══ 01 GOOGLE ADS ══ -->
+<div class="sec-label">Google Ads · Rental ARG · Búsqueda</div>
+
+<div class="kpi-row">
+  <div class="kpi accent">
+    <div class="kpi-label">Inversión</div>
+    <div class="kpi-value">$639.201</div>
+    <div class="kpi-sub">ARS · 35% del total</div>
+  </div>
+  <div class="kpi good">
+    <div class="kpi-label">CTR</div>
+    <div class="kpi-value">10,71%</div>
+    <div class="kpi-delta up">↑ 2× el benchmark B2B</div>
+  </div>
+  <div class="kpi good">
+    <div class="kpi-label">Conversiones (WA)</div>
+    <div class="kpi-value">113,5</div>
+    <div class="kpi-sub">Tasa de conv. 17,73%</div>
+  </div>
+  <div class="kpi warn">
+    <div class="kpi-label">CPA promedio</div>
+    <div class="kpi-value">$5.632</div>
+    <div class="kpi-sub">ARS por contacto</div>
+  </div>
+</div>
+
+<!-- Google: grupos con ads bar -->
+<div class="camp-table">
+  <div class="camp-table-head" style="grid-template-columns:2fr 60px 70px 80px 80px 90px 120px">
+    <span>Grupo de anuncios</span>
+    <span>Ads</span>
+    <span>Clics</span>
+    <span>Conv.</span>
+    <span>Gasto</span>
+    <span>CPA</span>
+    <span>Estado</span>
+  </div>
+  <div class="camp-row" style="grid-template-columns:2fr 60px 70px 80px 80px 90px 120px">
+    <div class="camp-name">Eventos General<small>Motor principal · mayor volumen</small></div>
+    <div class="camp-val">
+      <div class="ads-bar-wrap">
+        <div class="ads-bar"><div class="ads-bar-fill" style="width:100%"></div></div>
+        <div class="ads-count">5 ads</div>
+      </div>
+    </div>
+    <div class="camp-val">462</div>
+    <div class="camp-val">81,5</div>
+    <div class="camp-val">426k</div>
+    <div class="camp-val">5.231</div>
+    <div><span class="pill pill-green">Activo</span></div>
+  </div>
+  <div class="camp-row" style="grid-template-columns:2fr 60px 70px 80px 80px 90px 120px">
+    <div class="camp-name">Locales Comerciales<small>CPA más alto del mes</small></div>
+    <div class="camp-val">
+      <div class="ads-bar-wrap">
+        <div class="ads-bar"><div class="ads-bar-fill" style="width:60%"></div></div>
+        <div class="ads-count">3 ads</div>
+      </div>
+    </div>
+    <div class="camp-val">148</div>
+    <div class="camp-val">27,0</div>
+    <div class="camp-val">188k</div>
+    <div class="camp-val" style="color:#D97706;font-weight:700">6.958</div>
+    <div><span class="pill pill-green">Activo</span></div>
+  </div>
+  <div class="camp-row" style="grid-template-columns:2fr 60px 70px 80px 80px 90px 120px">
+    <div class="camp-name">Iglesias<small>★ Más eficiente — CPA mínimo</small></div>
+    <div class="camp-val">
+      <div class="ads-bar-wrap">
+        <div class="ads-bar"><div class="ads-bar-fill" style="width:40%;background:#16A34A"></div></div>
+        <div class="ads-count">2 ads</div>
+      </div>
+    </div>
+    <div class="camp-val">18</div>
+    <div class="camp-val">4,0</div>
+    <div class="camp-val">17k</div>
+    <div class="camp-val" style="color:#16A34A;font-weight:700">4.366</div>
+    <div><span class="pill pill-green">Activo</span></div>
+  </div>
+  <div class="camp-row" style="grid-template-columns:2fr 60px 70px 80px 80px 90px 120px">
+    <div class="camp-name">Discotecas<small>Bajo volumen</small></div>
+    <div class="camp-val">
+      <div class="ads-bar-wrap">
+        <div class="ads-bar"><div class="ads-bar-fill" style="width:20%"></div></div>
+        <div class="ads-count">1 ad</div>
+      </div>
+    </div>
+    <div class="camp-val">8</div>
+    <div class="camp-val">1,0</div>
+    <div class="camp-val">5k</div>
+    <div class="camp-val">4.987</div>
+    <div><span class="pill pill-gray">Bajo vol.</span></div>
+  </div>
+  <div class="camp-row" style="grid-template-columns:2fr 60px 70px 80px 80px 90px 120px">
+    <div class="camp-name">Conciertos / DJ<small>0 conversiones · revisar</small></div>
+    <div class="camp-val">
+      <div class="ads-bar-wrap">
+        <div class="ads-bar"><div class="ads-bar-fill" style="width:20%;background:#EF4444"></div></div>
+        <div class="ads-count">1 ad</div>
+      </div>
+    </div>
+    <div class="camp-val">4</div>
+    <div class="camp-val" style="color:#EF4444">0,0</div>
+    <div class="camp-val">3k</div>
+    <div class="camp-val">—</div>
+    <div><span class="pill pill-red">Sin conv.</span></div>
+  </div>
+</div>
+
+<!-- Google chart: CPA por grupo -->
+<div class="two-col">
+  <div class="chart-card">
+    <div class="chart-card-title">CPA por grupo (ARS)</div>
+    <div class="chart-card-sub">Cuánto cuesta cada contacto según el vertical</div>
+    <div class="chart-wrap" style="height:180px">
+      <canvas id="gCPA" role="img" aria-label="CPA por grupo de anuncios">CPA por grupo</canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-card-title">Top keywords por conversiones</div>
+    <div class="chart-card-sub">Las 5 con más resultados en abril</div>
+    <div class="chart-wrap" style="height:180px">
+      <canvas id="gKW" role="img" aria-label="Top keywords por conversiones">Keywords</canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 02 META ADS ══ -->
+<div class="sec-label" style="margin-top:32px">Meta Ads · LATAM · 5 campañas activas</div>
+
+<div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">
+  <div class="kpi accent">
+    <div class="kpi-label">Inversión Meta</div>
+    <div class="kpi-value">$1.185.088</div>
+    <div class="kpi-sub">ARS · 65% del total</div>
+  </div>
+  <div class="kpi good">
+    <div class="kpi-label">Leads directos</div>
+    <div class="kpi-value">1.680</div>
+    <div class="kpi-sub">ARG + México</div>
+  </div>
+  <div class="kpi warn">
+    <div class="kpi-label">CPL promedio</div>
+    <div class="kpi-value">$481</div>
+    <div class="kpi-sub">ARS por lead</div>
+  </div>
+</div>
+
+<!-- Meta: tabla de campañas -->
+<div class="camp-table">
+  <div class="camp-table-head" style="grid-template-columns:2.2fr 60px 90px 80px 100px 120px">
+    <span>Campaña</span>
+    <span>Ads</span>
+    <span>Resultado</span>
+    <span>Gasto</span>
+    <span>CPL / CPR</span>
+    <span>Estado</span>
+  </div>
+
+  <div class="camp-row" style="grid-template-columns:2.2fr 60px 90px 80px 100px 120px">
+    <div class="camp-name">GW_ClientesPotenciales_MEX_Rental<small>México · Leads · Rendimiento Alto ★</small></div>
+    <div class="camp-val">
+      <div class="ads-bar-wrap">
+        <div class="ads-bar"><div class="ads-bar-fill" style="width:80%;background:#16A34A"></div></div>
+        <div class="ads-count">4 ads</div>
+      </div>
+    </div>
+    <div class="camp-val" style="color:#16A34A;font-weight:700">813 leads</div>
+    <div class="camp-val">180k</div>
+    <div class="camp-val" style="color:#16A34A;font-weight:700">ARS 222</div>
+    <div><span class="pill pill-green">Alto ★</span></div>
+  </div>
+
+  <div class="camp-row" style="grid-template-columns:2.2fr 60px 90px 80px 100px 120px">
+    <div class="camp-name">GW_ClientesPotenciales_MEX_OOH<small>México · Leads · Rendimiento Alto ★</small></div>
+    <div class="camp-val">
+      <div class="ads-bar-wrap">
+        <div class="ads-bar"><div class="ads-bar-fill" style="width:80%;background:#16A34A"></div></div>
+        <div class="ads-count">4 ads</div>
+      </div>
+    </div>
+    <div class="camp-val">472 leads</div>
+    <div class="camp-val">179k</div>
+    <div class="camp-val">ARS 380</div>
+    <div><span class="pill pill-green">Alto ★</span></div>
+  </div>
+
+  <div class="camp-row" style="grid-template-columns:2.2fr 60px 90px 80px 100px 120px">
+    <div class="camp-name">GW_TráficoWeb_MEX_Rental-OOH<small>México · Tráfico landing</small></div>
+    <div class="camp-val">
+      <div class="ads-bar-wrap">
+        <div class="ads-bar"><div class="ads-bar-fill" style="width:60%"></div></div>
+        <div class="ads-count">3 ads</div>
+      </div>
+    </div>
+    <div class="camp-val">1.928 visitas</div>
+    <div class="camp-val">138k</div>
+    <div class="camp-val">ARS 72</div>
+    <div><span class="pill pill-green">Activo</span></div>
+  </div>
+
+  <div class="camp-row" style="grid-template-columns:2.2fr 60px 90px 80px 100px 120px">
+    <div class="camp-name">GW_Dinalight_Intereses_ARG_ClicWPP<small>Argentina · Leads · CPL elevado</small></div>
+    <div class="camp-val">
+      <div class="ads-bar-wrap">
+        <div class="ads-bar"><div class="ads-bar-fill" style="width:40%;background:#D97706"></div></div>
+        <div class="ads-count">2 ads</div>
+      </div>
+    </div>
+    <div class="camp-val">395 leads</div>
+    <div class="camp-val">448k</div>
+    <div class="camp-val" style="color:#D97706;font-weight:700">ARS 1.135</div>
+    <div><span class="pill pill-amber">Optimizar</span></div>
+  </div>
+
+  <div class="camp-row" style="grid-template-columns:2.2fr 60px 90px 80px 100px 120px">
+    <div class="camp-name">GW_Tráfico Perfil Instagram_ARG<small>Argentina · Awareness · Perfil IG</small></div>
+    <div class="camp-val">
+      <div class="ads-bar-wrap">
+        <div class="ads-bar"><div class="ads-bar-fill" style="width:60%"></div></div>
+        <div class="ads-count">3 ads</div>
+      </div>
+    </div>
+    <div class="camp-val">4.095 visitas</div>
+    <div class="camp-val">239k</div>
+    <div class="camp-val">ARS 58</div>
+    <div><span class="pill pill-green">Activo</span></div>
+  </div>
+</div>
+
+<!-- Meta charts -->
+<div class="three-col">
+  <div class="chart-card">
+    <div class="chart-card-title">CPL por campaña</div>
+    <div class="chart-card-sub">ARS por lead generado</div>
+    <div class="chart-wrap" style="height:160px">
+      <canvas id="mCPL" role="img" aria-label="CPL por campaña Meta">CPL</canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-card-title">Distribución de inversión</div>
+    <div class="chart-card-sub">Gasto por campaña (ARS)</div>
+    <div class="chart-wrap" style="height:160px">
+      <canvas id="mGasto" role="img" aria-label="Gasto por campaña Meta">Gasto</canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-card-title">ARG vs MEX</div>
+    <div class="chart-card-sub">CPL histórico Mar → Abr</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#16A34A"></div>México</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#E8003D"></div>Argentina</div>
+    </div>
+    <div class="chart-wrap" style="height:120px">
+      <canvas id="mHistorico" role="img" aria-label="Evolución CPL Argentina vs Mexico">Histórico CPL</canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ══ INSIGHTS ══ -->
+<div class="sec-label" style="margin-top:8px">Diagnóstico · 3 acciones clave</div>
+
+<div class="insights-row">
+  <div class="insight-card green">
+    <div class="insight-icon">↑</div>
+    <div class="insight-title">Escalar iglesias y fabricantes</div>
+    <div class="insight-body">Son las keywords con menor CPA del mes (ARS 2.593 y 2.810) y tasa de conversión del 44%. Tienen presupuesto mínimo — escalarlas es la ganancia más fácil de Google en mayo.</div>
+  </div>
+  <div class="insight-card amber">
+    <div class="insight-icon">↻</div>
+    <div class="insight-title">Renovar creativos ARG en Meta</div>
+    <div class="insight-body">El CPL de Argentina subió 85% respecto a marzo (de $613 a $1.135). Los creativos de ClicWPP agotaron su vida útil. Renovar copies e imágenes es la acción más urgente para recuperar eficiencia.</div>
+  </div>
+  <div class="insight-card red">
+    <div class="insight-icon">✕</div>
+    <div class="insight-title">Pausar grupo Conciertos/DJ</div>
+    <div class="insight-body">ARS 2.532 gastados, 0 conversiones, keywords con baja calidad. Propuesta: pausar el grupo y testear "cabina inmersiva para eventos" como keyword de reemplazo en Eventos General.</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p>Dinalight · Diagnóstico Paid Media · Abril 2026 · Growthing</p>
+  <svg xmlns="http://www.w3.org/2000/svg" width="80" height="20" viewBox="0 0 198 49" fill="none"><path d="M0 0.00770994L0 48.4608L48.4223 48.4493L48.4107 0L0 0.00770994ZM43.5766 4.66837L9.00136 17.4515L20.3966 22.4976L4.83028 37.4395L4.85726 4.86497L43.5766 4.66837ZM43.5496 43.4687H11.2565L11.2719 43.4609L26.0326 27.9524L31.0788 39.3477L43.7154 4.811L43.5496 43.4687Z" fill="#E8003D"/><path d="M69.7813 24.1364H66.146C66.0343 23.9089 65.9572 23.4386 65.9186 23.1649C65.1245 24.0862 63.5093 24.333 61.9518 24.333C58.039 24.333 56.9365 22.8141 56.9365 20.6707V14.4989C56.9365 12.4866 58.5325 10.8213 63.3319 10.8213C69.1221 10.8213 69.7042 13.0186 69.7042 14.3409V14.9307H64.8354V14.2098C64.8354 13.5737 64.685 12.9839 63.3435 12.9839C62.2371 12.9839 61.8285 13.408 61.8285 14.2599V20.983C61.8285 21.8773 62.3797 22.2012 63.3435 22.2012C64.5193 22.2012 64.9202 21.7231 64.9202 20.6438V18.7625H63.2548V16.6346H69.7774V24.1286L69.7813 24.1364Z" fill="#0D0D0D"/><path d="M78.3709 18.4341V24.1356H73.5406V11.0172H79.8165C84.03 11.0172 86.1155 11.9848 86.1155 14.2785V14.7488C86.1155 16.6185 84.6853 17.1736 83.6059 17.4396C85.171 17.8328 85.9035 18.4341 85.9035 20.2653C85.9035 21.5335 85.8649 23.4456 86.077 24.1356H81.397C81.0848 23.542 81.1079 21.8342 81.1079 20.1612C81.1079 18.6847 80.7841 18.4341 78.9414 18.4341H78.3709ZM78.98 16.445C80.5952 16.445 81.2544 16.179 81.2544 14.957V14.3247C81.2544 13.4458 80.9152 13.0063 79.1342 13.0063H78.3786V16.445H78.98Z" fill="#0D0D0D"/><path d="M102.225 14.5298V20.6168C102.225 23.2189 99.8769 24.3369 95.4784 24.3369C91.0798 24.3369 89.1601 23.1919 89.1601 20.6438V14.4643C89.1601 11.9316 91.8277 10.8252 95.702 10.8252C99.5762 10.8252 102.225 11.9123 102.225 14.5298ZM94.052 14.2445V20.9483C94.052 21.7579 94.584 22.1819 95.6673 22.1819C96.7505 22.1819 97.3056 21.8003 97.3056 20.9368V14.2253C97.3056 13.4042 96.87 12.9878 95.6557 12.9878C94.6264 12.9878 94.0559 13.3772 94.0559 14.2445H94.052Z" fill="#0D0D0D"/><path d="M107.429 24.1356L104.58 11.0172H109.672C110.027 13.3649 110.536 17.8058 110.659 19.8759H110.829C111.338 17.3085 111.939 13.7388 112.471 11.0172H116.634C117.151 13.5807 117.729 17.1042 118.2 19.8335H118.392C118.616 17.3856 119.075 13.1875 119.402 11.0172H124.179L121.002 24.1356H115.991C115.497 21.8342 114.865 19.2977 114.422 16.5838H114.252C113.766 19.2553 113.015 21.7648 112.483 24.1356H107.429Z" fill="#0D0D0D"/><path d="M129.942 13.2492H126.279V11.0172H138.457V13.2492H134.772V24.1356H129.942V13.2492Z" fill="#0D0D0D"/><path d="M141.037 11.0172H145.879V16.0672H149.032V11.0172H153.901V24.1356H149.032V18.2915H145.879V24.1356H141.037V11.0172Z" fill="#0D0D0D"/><path d="M162.613 11.0172V24.1356H157.783V11.0172H162.613Z" fill="#0D0D0D"/><path d="M166.514 24.1356V11.0172H171.865C172.663 12.617 175.184 18.5575 175.384 19.1358H175.5C175.23 17.3895 175.06 15.0032 175.06 13.1721V11.0172H179.551V24.1356H174.151C173.63 22.8866 170.878 16.098 170.716 15.6817H170.585C170.774 17.2237 170.92 19.8335 170.92 21.8959V24.1356H166.51Z" fill="#0D0D0D"/><path d="M195.882 24.1362H192.247C192.135 23.9087 192.058 23.4384 192.019 23.1647C191.225 24.0861 189.61 24.3328 188.053 24.3328C184.14 24.3328 183.037 22.8139 183.037 20.6706V14.4987C183.037 12.4865 184.633 10.8211 189.433 10.8211C195.223 10.8211 195.805 13.0184 195.805 14.3407V14.9305H190.936V14.2096C190.936 13.5736 190.786 12.9837 189.444 12.9837C188.338 12.9837 187.929 13.4078 187.929 14.2597V20.9828C187.929 21.8772 188.48 22.201 189.444 22.201C190.62 22.201 191.021 21.723 191.021 20.6436V18.7623H189.356V16.6344H195.878V24.1285L195.882 24.1362Z" fill="#0D0D0D"/></svg>
+</div>
+
+<script>
+const RED='#E8003D', GREEN='#16A34A', AMBER='#D97706', BLUE='#3b82f6', GRAY='#D1D5DB';
+const GRID='rgba(0,0,0,0.05)', TICK='#999';
+const baseOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},animation:{duration:800,easing:'easeOutQuart'}};
+
+// Google: CPA por grupo
+new Chart(document.getElementById('gCPA'),{
+  type:'bar',
+  data:{
+    labels:['Iglesias','Discotecas','Eventos Gral','Comercios'],
+    datasets:[{
+      data:[4366,4987,5231,6958],
+      backgroundColor:[GREEN,'#6B7280',RED,AMBER],
+      borderRadius:5,borderSkipped:false
+    }]
+  },
+  options:{...baseOpts,
+    scales:{
+      x:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID}},
+      y:{ticks:{color:TICK,font:{size:10},callback:v=>'$'+v.toLocaleString('es-AR')},grid:{color:GRID}}
+    }
+  }
+});
+
+// Google: top keywords
+new Chart(document.getElementById('gKW'),{
+  type:'bar',
+  data:{
+    labels:['led eventos','proveedor','comercios','local/negocio','fabricantes'],
+    datasets:[{
+      data:[35,19,12,13,5],
+      backgroundColor:[RED,RED,RED,RED,GREEN],
+      borderRadius:5,borderSkipped:false
+    }]
+  },
+  options:{...baseOpts,indexAxis:'y',
+    scales:{
+      x:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID}},
+      y:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID}}
+    }
+  }
+});
+
+// Meta: CPL por campaña
+new Chart(document.getElementById('mCPL'),{
+  type:'bar',
+  data:{
+    labels:['MEX Rental','MEX OOH','IG ARG','ARG Leads'],
+    datasets:[{
+      data:[222,380,58,1135],
+      backgroundColor:[GREEN,GREEN,'#6B7280',AMBER],
+      borderRadius:5,borderSkipped:false
+    }]
+  },
+  options:{...baseOpts,
+    scales:{
+      x:{ticks:{color:TICK,font:{size:9}},grid:{color:GRID}},
+      y:{ticks:{color:TICK,font:{size:10},callback:v=>'$'+v},grid:{color:GRID}}
+    }
+  }
+});
+
+// Meta: gasto por campaña
+new Chart(document.getElementById('mGasto'),{
+  type:'doughnut',
+  data:{
+    labels:['ARG ClicWPP','Tráfico IG ARG','MEX Rental','MEX OOH','Tráfico MEX'],
+    datasets:[{
+      data:[448162,239434,180256,179262,137975],
+      backgroundColor:[AMBER,RED,GREEN,'#15803D','#6B7280'],
+      borderWidth:2,borderColor:'#F7F5F2',hoverOffset:4
+    }]
+  },
+  options:{...baseOpts,cutout:'60%',
+    plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{label:c=>' ARS '+c.raw.toLocaleString('es-AR')}}
+    }
+  }
+});
+
+// Meta: CPL histórico ARG vs MEX
+new Chart(document.getElementById('mHistorico'),{
+  type:'line',
+  data:{
+    labels:['Marzo','Abril'],
+    datasets:[
+      {label:'México',data:[398,222],borderColor:GREEN,backgroundColor:'transparent',pointBackgroundColor:GREEN,pointRadius:5,borderWidth:2,tension:.3},
+      {label:'Argentina',data:[613,1135],borderColor:RED,backgroundColor:'transparent',pointBackgroundColor:RED,pointRadius:5,borderWidth:2,tension:.3}
+    ]
+  },
+  options:{...baseOpts,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID}},
+      y:{ticks:{color:TICK,font:{size:10},callback:v=>'$'+v},grid:{color:GRID}}
+    }
+  }
+});
+
+// Animación de bars de ads al cargar
+document.querySelectorAll('.ads-bar-fill').forEach((el,i)=>{
+  const w=el.style.width;
+  el.style.width='0%';
+  setTimeout(()=>{el.style.transition='width .7s ease';el.style.width=w},100+i*60);
+});
+</script>
+</body>
+</html>
